@@ -1,4 +1,17 @@
 #include "math_exp.h"
+#include "stack_on_array.h"
+
+std::ostream& operator<<(std::ostream& ostr, const Lexeme& lex)
+{
+	if (const Operation* op = dynamic_cast<const Operation*>(&lex))
+		ostr << *op;
+	else if (const Literal_const* lit = dynamic_cast<const Literal_const*>(&lex))
+		ostr << *lit;
+	else
+		throw "Illegal type of lexeme";
+
+	return ostr;
+}
 
 Operation::Operation(char sym)
 {
@@ -39,6 +52,13 @@ void Operation::setPriority()
 		priority = 1;
 	else if ((symbol == '*') || (symbol == '/'))
 		priority = 2;
+	else
+		priority = -1;
+}
+
+std::ostream& operator<<(std::ostream& ostr, const Literal_const& lit)
+{
+	return ostr << lit.value;
 }
 
 
@@ -57,11 +77,15 @@ Literal_const& Literal_const::operator= (const Literal_const& cs)
 	return *this;
 }
 
+std::ostream& operator<<(std::ostream& ostr, const Operation& op)
+{
+	return ostr << op.symbol;
+}
 
-static string readNumber(const string& expr, size_t& start_pos)
+
+static string readNumber(const string& expr, int& i)
 {
 	string tmp;
-	size_t i = start_pos;
 	size_t len = expr.length();
 	while ((i < len) && (expr[i] >= '0') && (expr[i] <= '9'))
 	{
@@ -71,7 +95,7 @@ static string readNumber(const string& expr, size_t& start_pos)
 	return tmp;
 }
 
-static void operationToStack(const char tmp, vector<Lexeme>& out, Stack<Operation>& st)
+static void operationToStack(const char tmp, vector<Lexeme*>& out, Stack<Operation>& st)
 {
 	Operation op = tmp;
 	size_t priority = op.priority;
@@ -79,12 +103,17 @@ static void operationToStack(const char tmp, vector<Lexeme>& out, Stack<Operatio
 	if (tmp != '(')
 		while (!st.Empty() &&  (st.Top().symbol != '(') && (st.Top().priority >= priority))
 		{
-			Operation cont = st.Pop().symbol;
+			cout << "1" << endl;
+			Operation* cont = new Operation;
+			*cont = st.Pop().symbol;
 			out.push_back(cont);
 		}
 
 	if (tmp == ')')
+	{
+		cout << "2" << endl;
 		st.Pop();
+	}
 	else
 		st.Push(op);
 }
@@ -95,128 +124,169 @@ static int strToInt(string str)
 	int result = 0;
 	size_t digits = str.length();
 
-	for (size_t i = digits - 1; i > 0; i--)
+	for (int i = digits - 1; i >= 0; i--)
 	{
 		result += (static_cast<int>(str[i]) - static_cast<int>('0')) * exponent;
 		exponent *= 10;
 	}
 
+	//cout << "result = " << result << endl;
 	return result;
 }
 
-static bool analyzeToPolskaNotation(string expr, vector<Lexeme>& out)
+static bool analyzeToPolskaNotation(string expr, vector<Lexeme*>& out)
 {
 	enum condition { FAILURE = -1, SUCCESS, START, INTERM, END } status = START;
 
-	size_t i = 0;
+	int i = 0;
 	size_t braces_open = 0;
 	size_t len = expr.length();
 	Stack<Operation> st;
 
 	while (status > SUCCESS)
 	{
-		char tmp = expr[i];
+		while ((i < len) && (expr[i] == ' '))
+			i++;
+		char tmp = (i < len) ? expr[i] : '\0';
 		switch (status)
 		{
-			case START:
+		case START:
+			if (tmp == '\0')
+				status = END;
+			else if (tmp == '(')
 			{
-				if (tmp == '\0')
-					status = END;
-				else if (tmp == '(')
-					braces_open++;
-				else if (tmp == '-')
+				operationToStack(tmp, out, st);
+				braces_open++;
+			}	
+			else if (tmp == '-')
+			{
+				Literal_const *cont = new Literal_const;
+				*cont = 0;
+				out.push_back(cont);
+				i--;
+				status = INTERM;
+			}
+			else if ((tmp >= '0') && (tmp <= '9'))
+			{
+				Literal_const* cont = new Literal_const;
+				*cont = strToInt(readNumber(expr, i));
+				out.push_back(cont);
+				i--;
+				status = INTERM;
+			}
+			else
+				status = FAILURE;
+			break;
+
+		case INTERM:
+			if (tmp == '\0')
+				status = END;
+			else if (tmp == ')')
+			{
+				operationToStack(tmp, out, st);
+				braces_open--;
+				status = (braces_open >= 0) ? INTERM : FAILURE;
+			}
+			else if ((tmp == '+') || (tmp == '-') || (tmp == '*') || (tmp == '/'))
+			{
+				operationToStack(tmp, out, st);
+				status = START;
+			}
+			else
+				status = FAILURE;
+			break;
+
+		case END:
+			if (braces_open == 0)
+			{
+				while (!st.Empty())
 				{
-					Literal_const cont = 0;
+					Operation* cont = new Operation;
+					*cont = st.Pop();
 					out.push_back(cont);
-					i--;
-					status = INTERM;
 				}
-				else if ((tmp >= '0') && (tmp <= '9'))
-				{
-					Literal_const cont = strToInt(readNumber(expr, i));
-					out.push_back(cont);
-					i--;
-					status = INTERM;
-				}
-				else
-					status = FAILURE;
-				break;
+				status = SUCCESS;
 			}
+			else
+				status = FAILURE;
+			break;
 
-			case INTERM:
-			{
-				if (tmp == '\0')
-					status = END;
-				else if (tmp == ')')
-				{
-					braces_open--;
-					status = (braces_open >= 0) ? INTERM : FAILURE;
-				}
-				else if ((tmp == '+') || (tmp == '-') || (tmp == '*') || (tmp == '/'))
-				{
-					operationToStack(tmp, out, st);
-					status = START;
-				}
-				else
-					status = FAILURE;
-				break;
-			}
-
-			case END:
-			{
-				status = (braces_open == 0) ? SUCCESS : FAILURE;
-				break;
-			}
-
-			default:
-			{
-				break;
-			}
+		default:
+			break;
 			
 		}
+
+		cout << endl << "i = " << i << endl;
+		cout << "vector: ";
+		for (int j = 0; j < out.size(); j++)
+			cout << *out[j] << ' ';
+		cout << endl;
+
+		cout << "stack: " << st << endl;
+
 		i++;
 	}
 	
-	return status;
+	return (status == SUCCESS);
 }
 
 static int arithmetic(Operation op, Stack<int>& values)
 {
+	cout << "3" << endl;
 	int right = values.Pop();
+	cout << "4" << endl;
 	int left = values.Pop();
+	int result = 0;
 	switch (op.symbol)
 	{
-		case '+': return left + right;
+		case '+': 
+			result = left + right;
+			break;
 
-		case '-': return left - right;
+		case '-': 
+			result = left - right;
+			break;
 
-		case '*': return left * right;
+		case '*': 
+			result = left * right;
+			break;
 
-		case '/': return left / right;
+		case '/': 
+			result = left / right;
+			break;
 
-		default: return 0;
+		default: 
+			result = 0;
+			break;
 	}
+
+	values.Push(result);
+	return result;
 }
 
-static int polskaToRes(vector<Lexeme>& in)
+static int polskaToRes(vector<Lexeme*>& in)
 {
 	Stack<int> values;
 	size_t size = in.size();
-	int result;
+	cout << "size = " << size << endl;
 
 	for (size_t i = 0; i < size; i++)
 	{
-		if (Literal_const* tmp = dynamic_cast<Literal_const*>(&in[i]))
+		if (Literal_const* tmp = dynamic_cast<Literal_const*>(in[i]))
 			values.Push(tmp->value);
-		else if (Operation* tmp = dynamic_cast<Operation*>(&in[i]))
-			result = arithmetic(*tmp, values);
+		else if (Operation* tmp = dynamic_cast<Operation*>(in[i]))
+		{
+			arithmetic(*tmp, values);
+		}	
 	}
+	cout << "5" << endl;
+	return values.Pop();
 }
 
 
 int calc(string expression)
 {
-	vector<Lexeme> polska;
+	vector<Lexeme*> polska;
 	if (!analyzeToPolskaNotation(expression, polska))
 		throw "Incorrect mathematical expression";
 	else
