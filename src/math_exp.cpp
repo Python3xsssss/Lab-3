@@ -62,7 +62,7 @@ std::ostream& operator<<(std::ostream& ostr, const Literal_const& lit)
 }
 
 
-Literal_const& Literal_const::operator= (int data)
+Literal_const& Literal_const::operator= (double data)
 {
 	value = data;
 	return *this;
@@ -86,10 +86,13 @@ std::ostream& operator<<(std::ostream& ostr, const Operation& op)
 static string readNumber(const string& expr, int& i)
 {
 	string tmp;
+	bool flag = true;
 	size_t len = expr.length();
-	while ((i < len) && (expr[i] >= '0') && (expr[i] <= '9'))
+	while ((i < len) && ((expr[i] >= '0') && (expr[i] <= '9') || (expr[i] == '.') && flag))
 	{
 		tmp.push_back(expr[i]);
+		if (expr[i] == '.')
+			flag = false;
 		i++;
 	}
 	return tmp;
@@ -165,7 +168,7 @@ static bool analyze(string expr, vector<Lexeme*>& out)
 			else if ((tmp >= '0') && (tmp <= '9'))
 			{
 				Literal_const* cont = new Literal_const;
-				*cont = strToInt(readNumber(expr, i));
+				*cont = std::stod(readNumber(expr, i));
 				out.push_back(cont);
 				i--;
 				status = INTERM;
@@ -239,11 +242,11 @@ static vector<Lexeme*> toPolskaNotation(vector<Lexeme*> in)
 	return out;
 }
 
-static int arithmetic(Operation op, Stack<int>& values)
+static double arithmetic(Operation op, Stack<double>& values)
 {
-	int right = values.Pop();
-	int left = values.Pop();
-	int result = 0;
+	double right = values.Pop();
+	double left = values.Pop();
+	double result = 0.0;
 	switch (op.symbol)
 	{
 		case '+': 
@@ -259,7 +262,7 @@ static int arithmetic(Operation op, Stack<int>& values)
 			break;
 
 		case '/': 
-			if (right == 0)
+			if (right == 0.0)
 				throw "Error: divide by zero";
 			result = left / right;
 			break;
@@ -273,9 +276,9 @@ static int arithmetic(Operation op, Stack<int>& values)
 	return result;
 }
 
-static int polskaToRes(vector<Lexeme*>& in)
+static double polskaToRes(vector<Lexeme*>& in)
 {
-	Stack<int> values;
+	Stack<double> values;
 	size_t size = in.size();
 
 	for (size_t i = 0; i < size; i++)
@@ -291,7 +294,7 @@ static int polskaToRes(vector<Lexeme*>& in)
 }
 
 
-int calc(string expression)
+double calc(string expression)
 {
 	vector<Lexeme*> checked;
 	if (!analyze(expression, checked))

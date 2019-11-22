@@ -37,17 +37,17 @@ private:
 
 struct Literal_const : public Lexeme
 {
-	int value;
+	double value;
 
 	Literal_const() : value(0) {}
-	Literal_const(int data) : value(data) {}
+	Literal_const(double data) : value(data) {}
 	Literal_const(const Literal_const& cs) : value(cs.value) {}
 	~Literal_const() {}
-	Literal_const& operator= (int);
+	Literal_const& operator= (double);
 	Literal_const& operator= (const Literal_const&);
 
 	friend std::ostream& operator<<(std::ostream& ostr, const Literal_const& lit);
 };
 
-int calc(string formula);
+double calc(string formula);
 #endif
