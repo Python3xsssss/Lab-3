@@ -153,3 +153,15 @@ TEST(calc, can_calc_formula_with_spaces)
 	string s = "( 1 +2 )*  3";
 	EXPECT_EQ(9.0, calc(s));
 }
+
+TEST(calc, can_calc_test_1)
+{
+	string s = "1+2*3";
+	EXPECT_EQ(7.0, calc(s));
+}
+
+TEST(calc, can_calc_test_2)
+{
+	string s = "1*2+3";
+	EXPECT_EQ(5.0, calc(s));
+}
