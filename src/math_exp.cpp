@@ -139,6 +139,7 @@ static bool analyze(string expr, vector<Lexeme*>& out)
 	int i = 0;
 	int braces_open = 0;
 	size_t len = expr.length();
+	bool unary = true;
 
 	while (status > SUCCESS)
 	{
@@ -156,14 +157,26 @@ static bool analyze(string expr, vector<Lexeme*>& out)
 				*cont = tmp;
 				out.push_back(cont);
 				braces_open++;
-			}	
+			}
 			else if (tmp == '-')
 			{
-				Literal_const *cont = new Literal_const;
-				*cont = 0;
-				out.push_back(cont);
-				i--;
-				status = INTERM;
+				bool flag = true;
+				if (out.size() > 0)
+				{
+					Operation* tmp = dynamic_cast<Operation*>(out.back());
+					if (tmp)
+						flag = (tmp->symbol == '(');
+				}
+				if (flag)
+				{
+					Literal_const* cont = new Literal_const;
+					*cont = 0;
+					out.push_back(cont);
+					i--;
+					status = INTERM;
+				}
+				else
+					status = FAILURE;
 			}
 			else if ((tmp >= '0') && (tmp <= '9'))
 			{
@@ -188,7 +201,6 @@ static bool analyze(string expr, vector<Lexeme*>& out)
 					Operation* cont = new Operation;
 					*cont = tmp;
 					out.push_back(cont);
-					status = INTERM;
 				}
 				else
 					status = FAILURE;

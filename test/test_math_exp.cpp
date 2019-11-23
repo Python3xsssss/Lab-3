@@ -38,16 +38,71 @@ TEST(calc, unfilled_brackets)
 	ASSERT_ANY_THROW(calc(s));
 }
 
-TEST(calc, number_only)
+TEST(calc, real_number_without_integer_part)
+{
+	string s = "1+.38";
+	ASSERT_ANY_THROW(calc(s));
+}
+
+TEST(calc, real_number_with_too_many_points)
+{
+	string s = "1+1.38.3";
+	ASSERT_ANY_THROW(calc(s));
+}
+
+TEST(calc, real_number_with_point_only)
+{
+	string s = "1+.";
+	ASSERT_ANY_THROW(calc(s));
+}
+
+TEST(calc, formula_without_numbers)
+{
+	string s = "-(--)";
+	ASSERT_ANY_THROW(calc(s));
+}
+
+TEST(calc, unary_minus_without_open_bracket)
+{
+	string s = "3+-5";
+	ASSERT_ANY_THROW(calc(s));
+}
+
+TEST(calc, double_unary_minus)
+{
+	string s = "--5";
+	ASSERT_ANY_THROW(calc(s));
+}
+
+
+TEST(calc, can_calc_number_only)
 {
 	string s = "1024";
 	EXPECT_EQ(1024.0, calc(s));
 }
 
-TEST(calc, negative_only)
+TEST(calc, can_calc_negative_only)
 {
 	string s = "-1024";
 	EXPECT_EQ(-1024.0, calc(s));
+}
+
+TEST(calc, can_calc_double_negative_only)
+{
+	string s = "-(-1024)";
+	EXPECT_EQ(1024.0, calc(s));
+}
+
+TEST(calc, can_calc_negative_zero)
+{
+	string s = "-0";
+	EXPECT_EQ(0.0, calc(s));
+}
+
+TEST(calc, can_calc_real_number_without_frac_part)
+{
+	string s = "1+1.";
+	EXPECT_EQ(2.0, calc(s));
 }
 
 TEST(calc, can_calc_sum)
